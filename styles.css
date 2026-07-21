@@ -64,7 +64,7 @@ ul { padding: 0; list-style: none; }
     radial-gradient(circle at 34% 28%, rgba(255, 103, 61, .14), transparent 15%),
     radial-gradient(circle at 50% 54%, rgba(255, 103, 61, .035), rgba(8, 9, 10, .12) 64%, rgba(8, 9, 10, .54) 76%);
   box-shadow: inset -60px -30px 100px rgba(0,0,0,.7), inset 32px 20px 70px rgba(255,255,255,.015), 0 0 100px rgba(255,103,61,.045);
-  transform: translate(-50%, -50%) rotate(-8deg);
+  transform: translate(calc(-50% + var(--orb-scroll-x, 0px)), calc(-50% + var(--orb-scroll-y, 0px))) rotate(calc(-8deg + var(--orb-scroll-rotation, 0deg)));
   animation: orb-float 9s ease-in-out infinite;
 }
 .orbital-figure::before,
@@ -306,7 +306,7 @@ a.project-link:hover .project-arrow { transform: rotate(45deg); background: var(
 
 @keyframes scroll-line { 0%,100% { transform: translateX(-120%); } 50% { transform: translateX(220%); } }
 @keyframes marquee { to { transform: translateX(-50%); } }
-@keyframes orb-float { 0%,100% { transform: translate(-50%, -50%) rotate(-8deg) scale(1); } 50% { transform: translate(-50%, calc(-50% - 12px)) rotate(-5deg) scale(1.015); } }
+@keyframes orb-float { 0%,100% { transform: translate(calc(-50% + var(--orb-scroll-x, 0px)), calc(-50% + var(--orb-scroll-y, 0px))) rotate(calc(-8deg + var(--orb-scroll-rotation, 0deg))) scale(1); } 50% { transform: translate(calc(-50% + var(--orb-scroll-x, 0px)), calc(-50% - 12px + var(--orb-scroll-y, 0px))) rotate(calc(-5deg + var(--orb-scroll-rotation, 0deg))) scale(1.015); } }
 @keyframes node-pulse { 0%,100% { opacity: .45; transform: scale(.8); } 50% { opacity: 1; transform: scale(1.35); } }
 
 @media (max-width: 980px) {

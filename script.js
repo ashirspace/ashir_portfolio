@@ -50,6 +50,7 @@ function createNetworkOrb() {
   if (!canvas) return;
 
   const context = canvas.getContext("2d", { alpha: true });
+  const orbitalFigure = document.querySelector(".orbital-figure");
   const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const staticPreview = new URLSearchParams(window.location.search).has("qa");
   const motionDisabled = prefersReducedMotion || staticPreview;
@@ -58,6 +59,8 @@ function createNetworkOrb() {
   const goldenAngle = Math.PI * (3 - Math.sqrt(5));
   let width = 0;
   let height = 0;
+  let baseCenterX = 0;
+  let baseCenterY = 0;
   let centerX = 0;
   let centerY = 0;
   let radius = 0;
@@ -67,6 +70,14 @@ function createNetworkOrb() {
   let targetY = 0;
   let animationFrame = 0;
   let lastFrame = 0;
+  let scrollX = 0;
+  let scrollY = 0;
+  let scrollRotation = 0;
+  let targetScrollX = 0;
+  let targetScrollY = 0;
+  let targetScrollRotation = 0;
+  let scrollVelocity = 0;
+  let lastScrollPosition = window.scrollY;
 
   for (let index = 0; index < pointCount; index += 1) {
     const y = 1 - (index / (pointCount - 1)) * 2;
@@ -90,13 +101,16 @@ function createNetworkOrb() {
     canvas.style.height = `${height}px`;
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
     radius = Math.min(width, height) * (width < 700 ? 0.34 : 0.48);
-    centerX = width < 700 ? width * 0.64 : width * 0.69;
-    centerY = width < 700 ? height * 0.39 : height * 0.43;
+    baseCenterX = width < 700 ? width * 0.64 : width * 0.69;
+    baseCenterY = width < 700 ? height * 0.39 : height * 0.43;
+    centerX = baseCenterX + scrollX;
+    centerY = baseCenterY + scrollY;
   }
 
   function rotatePoint(point) {
-    const cosY = Math.cos(rotationY);
-    const sinY = Math.sin(rotationY);
+    const scrollRotationRadians = scrollRotation * (Math.PI / 180);
+    const cosY = Math.cos(rotationY + scrollRotationRadians);
+    const sinY = Math.sin(rotationY + scrollRotationRadians);
     const cosX = Math.cos(rotationX);
     const sinX = Math.sin(rotationX);
     const x1 = point.x * cosY - point.z * sinY;
@@ -121,10 +135,20 @@ function createNetworkOrb() {
       return;
     }
     lastFrame = timestamp;
+    scrollX += (targetScrollX - scrollX) * 0.06;
+    scrollY += (targetScrollY - scrollY) * 0.06;
+    scrollRotation += (targetScrollRotation - scrollRotation) * 0.06;
+    scrollVelocity *= 0.86;
+    centerX = baseCenterX + scrollX;
+    centerY = baseCenterY + scrollY;
+    orbitalFigure?.style.setProperty("--orb-scroll-x", `${scrollX.toFixed(2)}px`);
+    orbitalFigure?.style.setProperty("--orb-scroll-y", `${scrollY.toFixed(2)}px`);
+    orbitalFigure?.style.setProperty("--orb-scroll-rotation", `${scrollRotation.toFixed(2)}deg`);
     context.clearRect(0, 0, width, height);
     rotationX += (targetY - rotationX) * 0.025;
     rotationY += (targetX - rotationY) * 0.025;
     if (!motionDisabled) rotationY += 0.0012;
+    rotationY += scrollVelocity * 0.006;
 
     const projected = points.map(rotatePoint);
 
@@ -190,15 +214,30 @@ function createNetworkOrb() {
     targetY = 0.15 + (event.clientY / height - 0.5) * 0.28;
   }
 
+  function handleScroll() {
+    const currentScrollPosition = window.scrollY;
+    const scrollDelta = currentScrollPosition - lastScrollPosition;
+    const maxScroll = Math.max(1, document.documentElement.scrollHeight - height);
+    const scrollProgress = Math.min(1, Math.max(0, currentScrollPosition / maxScroll));
+    lastScrollPosition = currentScrollPosition;
+
+    targetScrollX = scrollProgress * Math.min(width * 0.035, 42);
+    targetScrollY = scrollProgress * Math.min(height * 0.12, 90);
+    targetScrollRotation = scrollProgress * 16;
+    scrollVelocity = Math.max(-1, Math.min(1, scrollVelocity + scrollDelta * 0.004));
+  }
+
   function handleVisibility() {
     cancelAnimationFrame(animationFrame);
     if (!document.hidden && !motionDisabled) animationFrame = requestAnimationFrame(draw);
   }
 
   resize();
+  if (!motionDisabled) handleScroll();
   draw();
   window.addEventListener("resize", resize, { passive: true });
   window.addEventListener("pointermove", handlePointer, { passive: true });
+  if (!motionDisabled) window.addEventListener("scroll", handleScroll, { passive: true });
   document.addEventListener("visibilitychange", handleVisibility);
 }
 
