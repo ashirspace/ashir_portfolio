@@ -3,6 +3,30 @@ const header = document.querySelector(".site-header");
 const navLinks = Array.from(document.querySelectorAll(".main-nav a"));
 const revealElements = document.querySelectorAll(".reveal");
 const sections = navLinks.map((link) => document.querySelector(link.getAttribute("href"))).filter(Boolean);
+const themeToggle = document.querySelector("[data-theme-toggle]");
+const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+
+function setTheme(theme, { persist = true } = {}) {
+  const activeTheme = theme === "light" ? "light" : "dark";
+  const isLight = activeTheme === "light";
+  document.documentElement.dataset.theme = activeTheme;
+  themeToggle?.setAttribute("aria-pressed", String(isLight));
+  themeToggle?.setAttribute("aria-label", isLight ? "Switch to dark theme" : "Switch to light theme");
+  themeColorMeta?.setAttribute("content", isLight ? "#f3f1ea" : "#08090a");
+
+  if (persist) {
+    try {
+      localStorage.setItem("portfolio-theme", activeTheme);
+    } catch (_) {}
+  }
+
+  window.dispatchEvent(new CustomEvent("portfolio:themechange", { detail: { theme: activeTheme } }));
+}
+
+setTheme(document.documentElement.dataset.theme, { persist: false });
+themeToggle?.addEventListener("click", () => {
+  setTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light");
+});
 
 function updateLocalTime() {
   if (!timeElement) return;
@@ -152,10 +176,11 @@ function createNetworkOrb() {
 
     const projected = points.map(rotatePoint);
 
+    const isLightTheme = document.documentElement.dataset.theme === "light";
     const sphereGlow = context.createRadialGradient(centerX, centerY, radius * 0.08, centerX, centerY, radius * 1.08);
-    sphereGlow.addColorStop(0, "rgba(255, 103, 61, 0.055)");
-    sphereGlow.addColorStop(0.58, "rgba(255, 103, 61, 0.022)");
-    sphereGlow.addColorStop(0.94, "rgba(8, 9, 10, 0)");
+    sphereGlow.addColorStop(0, isLightTheme ? "rgba(219, 79, 41, 0.075)" : "rgba(255, 103, 61, 0.055)");
+    sphereGlow.addColorStop(0.58, isLightTheme ? "rgba(219, 79, 41, 0.025)" : "rgba(255, 103, 61, 0.022)");
+    sphereGlow.addColorStop(0.94, isLightTheme ? "rgba(243, 241, 234, 0)" : "rgba(8, 9, 10, 0)");
     context.fillStyle = sphereGlow;
     context.beginPath();
     context.arc(centerX, centerY, radius * 1.08, 0, Math.PI * 2);
@@ -163,29 +188,29 @@ function createNetworkOrb() {
 
     context.save();
     context.translate(centerX, centerY);
-    context.strokeStyle = "rgba(238, 238, 233, 0.16)";
+    context.strokeStyle = isLightTheme ? "rgba(38, 49, 45, 0.2)" : "rgba(238, 238, 233, 0.16)";
     context.lineWidth = 1;
     context.beginPath();
     context.arc(0, 0, radius, 0, Math.PI * 2);
     context.stroke();
     context.setLineDash([5, 14]);
-    context.strokeStyle = "rgba(255, 103, 61, 0.2)";
+    context.strokeStyle = isLightTheme ? "rgba(219, 79, 41, 0.28)" : "rgba(255, 103, 61, 0.2)";
     context.beginPath();
     context.ellipse(0, 0, radius * 1.12, radius * 0.34, -0.35, 0, Math.PI * 2);
     context.stroke();
     context.setLineDash([]);
     context.restore();
 
-    context.lineWidth = 0.7;
+    context.lineWidth = isLightTheme ? 0.9 : 0.7;
     for (let a = 0; a < projected.length; a += 1) {
       for (let b = a + 1; b < projected.length; b += 1) {
         const dx = projected[a].x - projected[b].x;
         const dy = projected[a].y - projected[b].y;
         const distance = Math.sqrt(dx * dx + dy * dy);
-        const threshold = radius * 0.34;
+        const threshold = radius * (isLightTheme ? 0.38 : 0.34);
         if (distance < threshold && projected[a].z > -0.55 && projected[b].z > -0.55) {
-          const opacity = (1 - distance / threshold) * Math.min(projected[a].alpha, projected[b].alpha) * 0.42;
-          context.strokeStyle = `rgba(225, 230, 224, ${opacity})`;
+          const opacity = (1 - distance / threshold) * Math.min(projected[a].alpha, projected[b].alpha) * (isLightTheme ? 0.58 : 0.42);
+          context.strokeStyle = isLightTheme ? `rgba(48, 62, 57, ${opacity})` : `rgba(225, 230, 224, ${opacity})`;
           context.beginPath();
           context.moveTo(projected[a].x, projected[a].y);
           context.lineTo(projected[b].x, projected[b].y);
@@ -199,8 +224,12 @@ function createNetworkOrb() {
       const size = Math.max(1.4, 2.8 * point.scale * pulse);
       const isAccent = index % 17 === 0;
       context.fillStyle = isAccent
-        ? `rgba(255, 103, 61, ${Math.min(1, point.alpha + 0.28)})`
-        : `rgba(238, 238, 233, ${point.alpha * 0.82})`;
+        ? isLightTheme
+          ? `rgba(219, 79, 41, ${Math.min(1, point.alpha + 0.28)})`
+          : `rgba(255, 103, 61, ${Math.min(1, point.alpha + 0.28)})`
+        : isLightTheme
+          ? `rgba(39, 51, 47, ${point.alpha * 0.78})`
+          : `rgba(238, 238, 233, ${point.alpha * 0.82})`;
       context.beginPath();
       context.arc(point.x, point.y, isAccent ? size * 1.7 : size, 0, Math.PI * 2);
       context.fill();
@@ -232,12 +261,17 @@ function createNetworkOrb() {
     if (!document.hidden && !motionDisabled) animationFrame = requestAnimationFrame(draw);
   }
 
+  function handleThemeChange() {
+    if (motionDisabled) draw();
+  }
+
   resize();
   if (!motionDisabled) handleScroll();
   draw();
   window.addEventListener("resize", resize, { passive: true });
   window.addEventListener("pointermove", handlePointer, { passive: true });
   if (!motionDisabled) window.addEventListener("scroll", handleScroll, { passive: true });
+  window.addEventListener("portfolio:themechange", handleThemeChange);
   document.addEventListener("visibilitychange", handleVisibility);
 }
 
